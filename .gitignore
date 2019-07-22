@@ -1,6 +1,10 @@
 # Private files
 serviceaccount.json
 
+# Assorted gcode
+*.gcode
+*.gco
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
