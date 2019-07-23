@@ -1,5 +1,6 @@
 import io
 import time
+import yaml
 
 import gspread
 from googleapiclient.discovery import build
@@ -8,27 +9,28 @@ from httplib2 import ServerNotFoundError
 from requests.exceptions import ConnectionError
 from oauth2client.service_account import ServiceAccountCredentials
 
+with open('QueueInterface.conf') as yaml_config:
+    config = yaml.safe_load(yaml_config)
 
 class QueueInterface:
     def __init__(self):
         # Connect and authenticate with Google sheets API
         self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive',
-                      "https://www.googleapis.com/auth/spreadsheets"]
+                      'https://www.googleapis.com/auth/spreadsheets']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
         for i in range(20):
             try:  # Attempt server connection
                 self.gc = gspread.authorize(self.credentials)
                 break
-            except ServerNotFoundError as e:
-                print("Connection failed, retrying...")
+            except ServerNotFoundError:  # Internet connection failed
+                print('Connection failed, retrying...')
                 time.sleep(30)  # Wait before retrying
                 if i == 19:  # Final attempt, give up and fail
                     raise
                 continue
         self.service = build('drive', 'v3', credentials=self.credentials)
 
-        self.worksheet = self.gc.open_by_key("1vIEMRgZJvIHGDI5OrJHG_wswMNymNetW0pPnJoxW8qU").sheet1  # Fake queue
-        # self.worksheet = gc.open_by_key("1CFe6MW3KMfDUHXCaJdiqFpT-bdrNBG8KiCAh8AhkRyI").sheet1  # Actual queue
+        self.worksheet = self.gc.open_by_key(config['database']['worksheet_id']).sheet1
 
     def get_status(self, print_id):
         return self.worksheet.cell(print_id, 9).value
@@ -38,12 +40,14 @@ class QueueInterface:
 
     def get_next_print(self, printer_type):
         print_id = 0  # Actually just spreadsheet row (for now)
+
         # SQL:
         # SELECT TOP 1
         # FROM Queue
         # WHERE Status = 'Queued'
         # AND PrinterType = {printer_type}
         # ORDER BY TimestampAdded ASC
+
         # Find all queued prints
         queued_cells = self.worksheet.findall("Queued")
         queued_set = set()
@@ -84,18 +88,22 @@ if __name__ == "__main__":
     # Next queued print search test
     printer_type = ""
     while printer_type == "":
-        print("Please enter number for printer type."
-              "\n1: Prusa"
-              "\n2: Ultimaker")
-        printers = {"1": "Prusa",
-                    "2": "Ultimaker"}
+
+        print("Please enter number for printer type.")
+        printers = {}
+        # Build dictionary of valid printers from config file and display
+        for i in range(len(config['valid_printers'])):
+            printers[str(i+1)] = config['valid_printers'][i]
+            print(f"{i+1}: {config['valid_printers'][i]}")
         try:
+            # Get user choice of printer type
             printer_type = printers[input(">> ")]
         except KeyError:
             print("Invalid input, please choose a number from those shown.")
             continue
 
     try:
+        # Retrieve and download gcode file, if available
         print(f"Searching for next queued {printer_type} print...")
         print_id = queue.get_next_print(printer_type)
         if print_id == 0:
@@ -103,11 +111,14 @@ if __name__ == "__main__":
             exit(0)
         print(f"{printer_type} print found, downloading...")
         print_filename = queue.download_file(print_id)  # Download file to local directory
-        root.filename = filedialog.asksaveasfilename(title="Save as...", initialfile=print_filename, initialdir="/",
-                                                     filetypes=(("gcode files", "*.gcode"), ("all files", "*.*")))
-        shutil.move(print_filename, root.filename)  # Move file from local directory to user's chosen directory
-
-        print(f"Downloaded to {root.filename}")
+        try:
+            root.filename = filedialog.asksaveasfilename(title="Save as...", initialfile=print_filename, initialdir="/",
+                                                         filetypes=(("gcode files", "*.gcode"), ("all files", "*.*")))
+            shutil.move(print_filename, root.filename)  # Move file from local directory to user's chosen directory
+            print(f"Downloaded to {root.filename}")
+        except FileNotFoundError:
+            print("Cancelling...")
+            # TODO: Remove downloaded file
     except ConnectionError:  # Internet connection failed
         print("Connection error")
         exit(0)
