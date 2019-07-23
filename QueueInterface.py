@@ -25,7 +25,7 @@ class QueueInterface:
                 if i == 19:  # Final attempt, give up and fail
                     raise
                 continue
-        self.service = build('drive', 'v3', credentials=self.credentials)  # http=self.creds.authorize(httplib2.Http()))
+        self.service = build('drive', 'v3', credentials=self.credentials)
 
         self.worksheet = self.gc.open_by_key("1vIEMRgZJvIHGDI5OrJHG_wswMNymNetW0pPnJoxW8qU").sheet1  # Fake queue
         # self.worksheet = gc.open_by_key("1CFe6MW3KMfDUHXCaJdiqFpT-bdrNBG8KiCAh8AhkRyI").sheet1  # Actual queue
@@ -44,14 +44,20 @@ class QueueInterface:
         # WHERE Status = 'Queued'
         # AND PrinterType = {printer_type}
         # ORDER BY TimestampAdded ASC
-        cell_list = self.worksheet.findall("Queued")
-        # TODO This approach is not ideal - makes a separate API request for every queued print until valid one is found
-        # Could request sets of both queued prints and prints for printer type, then find intersection
-        for cell in cell_list:
-            if self.worksheet.cell(cell.row, 10).value == printer_type:
-                print_id = cell.row
-                break
-        return print_id
+        # Find all queued prints
+        queued_cells = self.worksheet.findall("Queued")
+        queued_set = set()
+        for cell in queued_cells:
+            queued_set.add(cell.row)
+        # Find all prints that are for the given printer type
+        printer_cells = self.worksheet.findall(printer_type)
+        printer_set = set()
+        for cell in printer_cells:
+            printer_set.add(cell.row)
+        # Find intersection, set of valid queued prints for correct printer
+        valid_set = queued_set & printer_set
+        return sorted(list(valid_set))[0]  # Lowest value is first in queue
+        # TODO - This method does not account for anything but which print was added first
 
     def download_file(self, print_id):
         # Get file from Google Drive
@@ -67,6 +73,11 @@ class QueueInterface:
 
 
 if __name__ == "__main__":
+    import shutil
+    from tkinter import filedialog
+    from tkinter import *
+    root = Tk()
+
     queue = QueueInterface()
     print("Connected to queue")
 
@@ -91,8 +102,12 @@ if __name__ == "__main__":
             print("No print found")
             exit(0)
         print(f"{printer_type} print found, downloading...")
-        print_filename = queue.download_file(print_id)
-        print(f"Downloaded as {print_filename}")
+        print_filename = queue.download_file(print_id)  # Download file to local directory
+        root.filename = filedialog.asksaveasfilename(title="Save as...", initialfile=print_filename, initialdir="/",
+                                                     filetypes=(("gcode files", "*.gcode"), ("all files", "*.*")))
+        shutil.move(print_filename, root.filename)  # Move file from local directory to user's chosen directory
+
+        print(f"Downloaded to {root.filename}")
     except ConnectionError:  # Internet connection failed
         print("Connection error")
         exit(0)
