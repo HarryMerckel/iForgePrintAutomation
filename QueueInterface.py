@@ -9,14 +9,16 @@ from httplib2 import ServerNotFoundError
 from requests.exceptions import ConnectionError
 from oauth2client.service_account import ServiceAccountCredentials
 
+import mysql.connector as mariadb
+
 with open('QueueInterface.conf') as yaml_config:
     config = yaml.safe_load(yaml_config)
 
+
 class QueueInterface:
     def __init__(self):
-        # Connect and authenticate with Google sheets API
-        self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive',
-                      'https://www.googleapis.com/auth/spreadsheets']
+        # Connect and authenticate with Google drive API
+        self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
         for i in range(20):
             try:  # Attempt server connection
@@ -30,46 +32,103 @@ class QueueInterface:
                 continue
         self.service = build('drive', 'v3', credentials=self.credentials)
 
-        self.worksheet = self.gc.open_by_key(config['database']['worksheet_id']).sheet1
+        self.database = mariadb.connect(
+            host=config['server']['host'],
+            user=config['server']['user'],
+            passwd=config['server']['password'],
+            database=config['server']['database']
+        )
+
+    def __del__(self):
+        self.database.close()
+
+    def get_valid_printers(self):
+        printer_types = set()
+        cursor = self.database.cursor()
+        query = (
+            "SELECT `type` "
+            "FROM `printers`"
+        )
+        cursor.execute(query)
+        for printer_type in cursor:
+            printer_types.add(printer_type[0])
+        cursor.close()
+        return printer_types
+
+    def get_details(self, print_id):
+        cursor = self.database.cursor()
+        query = (
+            "SELECT * "
+            "FROM `prints` "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        result = cursor.fetchone()
+        return result
 
     def get_status(self, print_id):
-        return self.worksheet.cell(print_id, 9).value
+        cursor = self.database.cursor()
+        query = (
+            "SELECT `print status` "
+            "FROM `prints` "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+        else:
+            return None
 
     def update_status(self, print_id, new_status):
-        self.worksheet.update_cell(print_id, 5, new_status)
+        cursor = self.database.cursor()
+        query = (
+            "UPDATE `prints` "
+            f"SET `print status` = {new_status} "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        cursor.close()
 
     def mark_running(self, print_id):
         self.update_status(print_id, "Running")
 
     def get_next_print(self, printer_type):
-        print_id = 0  # Actually just spreadsheet row (for now)
-
-        # SQL:
-        # SELECT TOP 1
-        # FROM 'prints'
-        # WHERE 'status' = 'Queued'
-        # AND 'printer type' = '{printer_type}'
-        # ORDER BY 'added' ASC
-
-        # Find all queued prints
-        queued_cells = self.worksheet.findall("Queued")
-        queued_set = set()
-        for cell in queued_cells:
-            queued_set.add(cell.row)
-        # Find all prints that are for the given printer type
-        printer_cells = self.worksheet.findall(printer_type)
-        printer_set = set()
-        for cell in printer_cells:
-            printer_set.add(cell.row)
-        # Find intersection, set of valid queued prints for correct printer
-        valid_set = queued_set & printer_set
-        return sorted(list(valid_set))[0]  # Lowest value is first in queue
+        cursor = self.database.cursor()
+        query = (
+            "SELECT `id` "
+            "FROM `prints` "
+            "WHERE `print status` = 'Queued' "
+            f"AND `printer type` = '{printer_type}' "
+            "ORDER BY `added` ASC "
+            "LIMIT 1"
+        )
+        cursor.execute(query)
+        result = cursor.fetchone()
+        if result is not None:
+            print_id = result[0]
+            cursor.close()
+            return print_id
+        else:
+            cursor.close()
+            return 0
         # TODO - This method does not account for anything but which print was added first
 
     def download_file(self, print_id):
+        cursor = self.database.cursor()
+        query = (
+            "SELECT `drive file id`, `gcode filename` "
+            "FROM `prints` "
+            f"WHERE `id` = '{print_id}'"
+        )
+        cursor.execute(query)
+        result = cursor.fetchone()
+        if result is not None:
+            file_id = result[0]
+            filename = result[1]
+        else:
+            return
         # Get file from Google Drive
-        file_id = self.worksheet.cell(print_id, 15).value
-        filename = self.worksheet.cell(print_id, 3).value
         request = self.service.files().get_media(fileId=file_id)
         fh = io.FileIO(filename, mode='wb')
         downloader = MediaIoBaseDownload(fh, request)
@@ -91,16 +150,13 @@ if __name__ == "__main__":
     # Next queued print search test
     printer_type = ""
     while printer_type == "":
-
         print("Please enter number for printer type.")
-        printers = {}
-        # Build dictionary of valid printers from config file and display
-        for i in range(len(config['valid_printers'])):
-            printers[str(i+1)] = config['valid_printers'][i]
-            print(f"{i+1}: {config['valid_printers'][i]}")
+        printers = sorted(list(queue.get_valid_printers()))
+        for i in range(len(printers)):
+            print(f"{i+1}: {printers[i]}")
         try:
             # Get user choice of printer type
-            printer_type = printers[input(">> ")]
+            printer_type = printers[int(input(">> ")) - 1]
         except KeyError:
             print("Invalid input, please choose a number from those shown.")
             continue
@@ -127,5 +183,5 @@ if __name__ == "__main__":
         exit(0)
 
     # Print lookup test
-    print(f"Print ID 4 status: {queue.get_status(4)}")
-    print(f"Print ID 5 status: {queue.get_status(5)}")
+    print(f"Print ID 1: {queue.get_details(1)}")
+    print(f"Print ID 2: {queue.get_details(2)}")
