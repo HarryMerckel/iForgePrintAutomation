@@ -38,15 +38,18 @@ class QueueInterface:
     def update_status(self, print_id, new_status):
         self.worksheet.update_cell(print_id, 5, new_status)
 
+    def mark_running(self, print_id):
+        self.update_status(print_id, "Running")
+
     def get_next_print(self, printer_type):
         print_id = 0  # Actually just spreadsheet row (for now)
 
         # SQL:
         # SELECT TOP 1
-        # FROM Queue
-        # WHERE Status = 'Queued'
-        # AND PrinterType = {printer_type}
-        # ORDER BY TimestampAdded ASC
+        # FROM 'prints'
+        # WHERE 'status' = 'Queued'
+        # AND 'printer type' = '{printer_type}'
+        # ORDER BY 'added' ASC
 
         # Find all queued prints
         queued_cells = self.worksheet.findall("Queued")
