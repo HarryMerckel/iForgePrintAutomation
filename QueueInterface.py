@@ -1,15 +1,11 @@
 import io
-import time
-import yaml
-
-import gspread
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-from httplib2 import ServerNotFoundError
-from requests.exceptions import ConnectionError
-from oauth2client.service_account import ServiceAccountCredentials
 
 import mysql.connector as mariadb
+import yaml
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+from oauth2client.service_account import ServiceAccountCredentials
+from requests.exceptions import ConnectionError
 
 with open('QueueInterface.conf') as yaml_config:
     config = yaml.safe_load(yaml_config)
@@ -20,16 +16,6 @@ class QueueInterface:
         # Connect and authenticate with Google drive API
         self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
-        for i in range(20):
-            try:  # Attempt server connection
-                self.gc = gspread.authorize(self.credentials)
-                break
-            except ServerNotFoundError:  # Internet connection failed
-                print('Connection failed, retrying...')
-                time.sleep(30)  # Wait before retrying
-                if i == 19:  # Final attempt, give up and fail
-                    raise
-                continue
         self.service = build('drive', 'v3', credentials=self.credentials)
 
         self.database = mariadb.connect(
@@ -64,6 +50,7 @@ class QueueInterface:
         )
         cursor.execute(query)
         result = cursor.fetchone()
+        cursor.close()
         return result
 
     def get_status(self, print_id):
@@ -75,6 +62,7 @@ class QueueInterface:
         )
         cursor.execute(query)
         result = cursor.fetchone()
+        cursor.close()
         if result is not None:
             return result[0]
         else:
@@ -142,6 +130,7 @@ if __name__ == "__main__":
     import shutil
     from tkinter import filedialog
     from tkinter import *
+
     root = Tk()
 
     queue = QueueInterface()
