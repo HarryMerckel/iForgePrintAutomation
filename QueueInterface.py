@@ -125,6 +125,16 @@ class QueueInterface:
             status, done = downloader.next_chunk()
         return filename
 
+    def get_all_printer_details(self):
+        cursor = self.database.cursor()
+        query = (
+            "SELECT `id`, `name`, `type`, `ip address`, `api key` "
+            "FROM printers"
+        )
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+
 
 if __name__ == "__main__":
     import shutil
