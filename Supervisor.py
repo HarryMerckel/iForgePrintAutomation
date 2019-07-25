@@ -4,14 +4,14 @@ from requests.exceptions import ConnectionError
 
 
 class Printer:
-    def __init__(self, name=None, printer_type=None, url=None, apikey=None, state=None, current_print=None):
+    def __init__(self, name=None, printer_type=None, url=None, apikey=None):
         self.name = name
         self.type = printer_type
-        self.state = state
-        self.current_print = current_print
-        self.client = None
         self.url = url
         self.apikey = apikey
+
+        self.state = None
+        self.client = None
 
         self.start_client()
         self.update_state()
@@ -57,14 +57,36 @@ class Supervisor:
                 else:
                     self.printers[printer[0]].update_state(True)
 
+    def update_printer_states(self):
+        for printer in self.printers:
+            self.printers[printer].update_state()
+
+    def check_printer_states(self):
+        for printer_id in self.printers:
+            printer = self.printers[printer_id]
+            if printer.state == "Operational":
+                try:
+                    finished_print_id = printer.client.files("iForge_Auto", True)['children'][0]['name'].split('.')[0]
+                    self.queue.update_status(finished_print_id, "Complete")
+                    printer.client.delete(f"local/iForge_Auto/{finished_print_id}.gcode")
+                except IndexError:
+                    pass
+                next_print_id = self.queue.get_next_print(printer.type)
+                if next_print_id != 0:
+                    next_print = self.queue.download_file(next_print_id, str(next_print_id)+".gcode")
+                    printer.client.upload(next_print, path="iForge_Auto", select=True, print=True)
+                    print(f"Now printing {next_print}")
+
 
 if __name__ == "__main__":
     import time
     supervisor = Supervisor()
     print(supervisor.printers)
-    print(supervisor.printers[1].state)
-    print(supervisor.printers[1].get_full_status())
     while True:
-        supervisor.printers[1].update_state()
-        print(supervisor.printers[1].state)
-        time.sleep(5)
+        supervisor.update_printer_states()
+        for printer in supervisor.printers:
+            print(f"Printer: '{supervisor.printers[printer].name}'  "
+                  f"Type: '{supervisor.printers[printer].type}'  "
+                  f"State: '{supervisor.printers[printer].state}'")
+        supervisor.check_printer_states()
+        time.sleep(30)

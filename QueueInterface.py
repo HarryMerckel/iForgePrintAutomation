@@ -102,7 +102,7 @@ class QueueInterface:
             return 0
         # TODO - This method does not account for anything but which print was added first
 
-    def download_file(self, print_id):
+    def download_file(self, print_id, filename_override=None):
         cursor = self.database.cursor()
         query = (
             "SELECT `drive file id`, `gcode filename` "
@@ -113,7 +113,10 @@ class QueueInterface:
         result = cursor.fetchone()
         if result is not None:
             file_id = result[0]
-            filename = result[1]
+            if filename_override is not None:
+                filename = filename_override
+            else:
+                filename = result[1]
         else:
             return
         # Get file from Google Drive
