@@ -29,6 +29,7 @@ class QueueInterface:
         self.database.close()
 
     def get_valid_printers(self):
+        self.database.commit()
         printer_types = set()
         cursor = self.database.cursor()
         query = (
@@ -42,6 +43,7 @@ class QueueInterface:
         return printer_types
 
     def get_details(self, print_id):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "SELECT * "
@@ -54,6 +56,7 @@ class QueueInterface:
         return result
 
     def get_status(self, print_id):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "SELECT `print status` "
@@ -69,19 +72,22 @@ class QueueInterface:
             return None
 
     def update_status(self, print_id, new_status):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "UPDATE `prints` "
-            f"SET `print status` = {new_status} "
+            f"SET `print status` = '{new_status}' "
             f"WHERE `id` = {print_id}"
         )
         cursor.execute(query)
+        self.database.commit()
         cursor.close()
 
     def mark_running(self, print_id):
         self.update_status(print_id, "Running")
 
     def get_next_print(self, printer_type):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "SELECT `id` "
@@ -103,6 +109,7 @@ class QueueInterface:
         # TODO - This method does not account for anything but which print was added first
 
     def download_file(self, print_id, filename_override=None):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "SELECT `drive file id`, `gcode filename` "
@@ -129,6 +136,7 @@ class QueueInterface:
         return filename
 
     def get_all_printer_details(self):
+        self.database.commit()
         cursor = self.database.cursor()
         query = (
             "SELECT `id`, `name`, `type`, `ip address`, `api key` "
