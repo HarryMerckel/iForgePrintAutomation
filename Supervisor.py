@@ -6,8 +6,7 @@ from requests.exceptions import ConnectionError
 class Printer:
     """Acts as simplified interface for the OctoREST module for each printer"""
     def __init__(self, name=None, printer_type=None, url=None, apikey=None):
-        """Initialise connection and get current printer state
-
+        """
         Args:
             name: String
                 Vanity name for the printer
@@ -65,8 +64,11 @@ class Printer:
         if self.state == "Offline":
             if not force or (force and not self.start_client()):
                 return False
-
-        printer_status = self.get_full_status()
+        try:
+            printer_status = self.get_full_status()
+        except ConnectionError:
+            self.state = "Offline"
+            return False
         if printer_status['state']['text'] == "Operational" \
                 and printer_status['temperature']['bed']['actual'] > 40 \
                 and printer_status['temperature']['bed']['target'] == 0:
@@ -84,24 +86,37 @@ class Printer:
         -------
         dict
             See above documentation
-            None if printer not available
+            Concatenated recreation if printer offline or invalid configuration
         """
         if self.state not in ("Offline", "Invalid"):
-            return self.client.printer()
+            try:
+                return self.client.printer()
+            except ConnectionError:
+                return {'state': {'text': "Offline"}}  # Emulate the format of the octoprint output
         else:
-            return
+            return {'state': {'text': self.state}}
 
     def get_temperatures(self):
+        """Get temperature data from octoprint
+
+        Returns
+        -------
+        dict
+            Contains temperature data, varies by printer. Keys include 'bed'
+        """
         return self.get_full_status()['temperature']
 
 
 class Supervisor:
+    """Interface to monitor and control a large number of printers"""
     def __init__(self):
+        #Connect to queue and populate array of printers
         self.queue = QueueInterface.QueueInterface()
         self.printers = {}
         self.refresh_printers()
 
     def refresh_printers(self):
+        """Refreshes the dict of printers, updating their state if they've already been registered"""
         printer_details = self.queue.get_all_printer_details()
         for printer in printer_details:
             if printer[4] is not None:
@@ -111,22 +126,27 @@ class Supervisor:
                     self.printers[printer[0]].update_state(True)
 
     def update_printer_states(self):
+        """Just update the state of all active printers"""
         for printer in self.printers:
             self.printers[printer].update_state()
 
     def check_printer_states(self):
+        """Check all active printers, start next print job if last one complete"""
         for printer_id in self.printers:
             printer = self.printers[printer_id]
             if printer.state == "Operational":
                 try:
+                    # Check whether there was a print that's done - if so, mark as complete and remove from printer
                     finished_print_id = printer.client.files("iForge_Auto", True)['children'][0]['name'].split('.')[0]
                     self.queue.update_status(finished_print_id, "Complete")
                     printer.client.delete(f"local/iForge_Auto/{finished_print_id}.gcode")
                 except IndexError:
                     pass
+                # Get ID of next print for current printer type
                 next_print_id = self.queue.get_next_print(printer.type)
                 if next_print_id != 0:
                     next_print = self.queue.download_file(next_print_id, str(next_print_id)+".gcode")
+                    # Upload next print and move to the operating folder
                     printer.client.upload(next_print)
                     printer.client.move(f"{str(next_print_id)}.gcode", f"iForge_Auto/{str(next_print_id)}.gcode")
                     printer.client.select(f"iForge_Auto/{str(next_print_id)}.gcode", print=True)
@@ -138,6 +158,7 @@ if __name__ == "__main__":
     supervisor = Supervisor()
     print(supervisor.printers)
     while True:
+        # Check printers and start new prints every 30 seconds (excluding time spent starting new prints)
         supervisor.update_printer_states()
         for printer in supervisor.printers:
             print(f"Printer: '{supervisor.printers[printer].name}'  "

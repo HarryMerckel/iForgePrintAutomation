@@ -12,8 +12,9 @@ with open('QueueInterface.conf') as yaml_config:
 
 
 class QueueInterface:
+    """Interface for the MariaDB print database"""
     def __init__(self):
-        # Connect and authenticate with Google drive API
+        #Initialise the database and Google Drive connection
         self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
         self.service = build('drive', 'v3', credentials=self.credentials)
@@ -26,9 +27,17 @@ class QueueInterface:
         )
 
     def __del__(self):
+        # Close the database connection on close
         self.database.close()
 
     def get_valid_printers(self):
+        """Retrieve a list of valid printer types
+
+        Returns
+        -------
+        set
+            Set of valid printer types from database
+        """
         self.database.commit()
         printer_types = set()
         cursor = self.database.cursor()
@@ -43,6 +52,18 @@ class QueueInterface:
         return printer_types
 
     def get_details(self, print_id):
+        """Retrieve database row based on ID
+
+        Parameters
+        ----------
+        print_id: int
+            The ID of the desired print
+
+        Returns
+        -------
+        dict
+            Follows structure of database
+        """
         self.database.commit()
         cursor = self.database.cursor()
         query = (
