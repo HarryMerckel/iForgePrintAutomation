@@ -7,23 +7,24 @@ from googleapiclient.http import MediaIoBaseDownload
 from oauth2client.service_account import ServiceAccountCredentials
 from requests.exceptions import ConnectionError
 
-with open('QueueInterface.conf') as yaml_config:
+with open('config.yml') as yaml_config:
     config = yaml.safe_load(yaml_config)
 
 
 class QueueInterface:
     """Interface for the MariaDB print database"""
+
     def __init__(self):
-        #Initialise the database and Google Drive connection
+        # Initialise the database and Google Drive connection
         self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
         self.service = build('drive', 'v3', credentials=self.credentials)
 
         self.database = mariadb.connect(
-            host=config['server']['host'],
-            user=config['server']['user'],
-            passwd=config['server']['password'],
-            database=config['server']['database']
+            host=config['queue']['server']['host'],
+            user=config['queue']['server']['user'],
+            passwd=config['queue']['server']['password'],
+            database=config['queue']['server']['database']
         )
 
     def __del__(self):

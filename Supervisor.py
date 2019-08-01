@@ -1,10 +1,16 @@
+import yaml
+
 import QueueInterface
 import octorest
 from requests.exceptions import ConnectionError
 
+with open('config.yml') as yaml_config:
+    config = yaml.safe_load(yaml_config)
+
 
 class Printer:
     """Acts as simplified interface for the OctoREST module for each printer"""
+
     def __init__(self, name=None, printer_type=None, url=None, apikey=None):
         """
         Args:
@@ -74,7 +80,7 @@ class Printer:
                 and printer_status['temperature']['bed']['target'] == 0:
             self.state = "Cooldown"
         else:
-            self.state = printer_status['state']['text']
+            self.state = printer_status['state']['text']  # Octoprint internal state string
         return True
 
     def get_full_status(self):
@@ -97,20 +103,21 @@ class Printer:
             return {'state': {'text': self.state}}
 
     def get_temperatures(self):
-        """Get temperature data from octoprint
+        """Get temperature data from Octoprint
 
         Returns
         -------
         dict
-            Contains temperature data, varies by printer. Keys include 'bed'
+            Contains temperature data, varies by printer. Keys include 'bed' and 'e0'
         """
         return self.get_full_status()['temperature']
 
 
 class Supervisor:
     """Interface to monitor and control a large number of printers"""
+
     def __init__(self):
-        #Connect to queue and populate array of printers
+        # Connect to queue and populate array of printers
         self.queue = QueueInterface.QueueInterface()
         self.printers = {}
         self.refresh_printers()
@@ -137,24 +144,32 @@ class Supervisor:
             if printer.state == "Operational":
                 try:
                     # Check whether there was a print that's done - if so, mark as complete and remove from printer
-                    finished_print_id = printer.client.files("iForge_Auto", True)['children'][0]['name'].split('.')[0]
+                    folder = printer.client.files(config['printers']['working_folder'], True)
+                    finished_print_id = folder['children'][0]['name'].split('.')[0]
                     self.queue.update_status(finished_print_id, "Complete")
-                    printer.client.delete(f"local/iForge_Auto/{finished_print_id}.gcode")
+                    printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
                 except IndexError:
                     pass
                 # Get ID of next print for current printer type
                 next_print_id = self.queue.get_next_print(printer.type)
                 if next_print_id != 0:
-                    next_print = self.queue.download_file(next_print_id, str(next_print_id)+".gcode")
+                    next_print = self.queue.download_file(next_print_id, str(next_print_id) + ".gcode")
                     # Upload next print and move to the operating folder
                     printer.client.upload(next_print)
-                    printer.client.move(f"{str(next_print_id)}.gcode", f"iForge_Auto/{str(next_print_id)}.gcode")
-                    printer.client.select(f"iForge_Auto/{str(next_print_id)}.gcode", print=True)
+                    printer.client.move(f"{str(next_print_id)}.gcode",
+                                        f"{config['printers']['working_folder']}/{str(next_print_id)}.gcode")
+                    # Select and start print
+                    printer.client.select(f"{config['printers']['working_folder']}/{str(next_print_id)}.gcode",
+                                          print=True)
+                    # Mark as running
                     self.queue.mark_running(next_print_id)
+                    # TODO: Print probably not actually running at this point
+                    #     Need to think about where to pause and how to detect failed prints
 
 
 if __name__ == "__main__":
     import time
+
     supervisor = Supervisor()
     print(supervisor.printers)
     while True:
@@ -165,4 +180,4 @@ if __name__ == "__main__":
                   f"Type: '{supervisor.printers[printer].type}'  "
                   f"State: '{supervisor.printers[printer].state}'")
         supervisor.check_printer_states()
-        time.sleep(30)
+        time.sleep(config['supervisor']['update_interval'])
