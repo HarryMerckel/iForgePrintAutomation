@@ -63,24 +63,15 @@ class Printer:
         Returns
         -------
         bool
-            True if printer online, false if not
+            True if status retrieved from octoprint, false if not
         """
         if self.state == "Invalid":
             return False
-        if self.state == "Offline":
+        if self.state == "Octoprint Offline":
             if not force or (force and not self.start_client()):
                 return False
-        try:
-            printer_status = self.get_full_status()
-        except ConnectionError:
-            self.state = "Offline"
-            return False
-        if printer_status['state']['text'] == "Operational" \
-                and printer_status['temperature']['bed']['actual'] > 40 \
-                and printer_status['temperature']['bed']['target'] == 0:
-            self.state = "Cooldown"
-        else:
-            self.state = printer_status['state']['text']  # Octoprint internal state string
+        printer_status = self.get_full_status()
+        self.state = printer_status['state']['text']  # Octoprint internal state string
         return True
 
     def get_full_status(self):
@@ -94,11 +85,13 @@ class Printer:
             See above documentation
             Concatenated recreation if printer offline or invalid configuration
         """
-        if self.state not in ("Offline", "Invalid"):
+        if self.state not in ("Octoprint Offline", "Invalid"):
             try:
                 return self.client.printer()
             except ConnectionError:
-                return {'state': {'text': "Offline"}}  # Emulate the format of the octoprint output
+                return {'state': {'text': "Octoprint Offline"}}  # Emulate the format of the octoprint output
+            except RuntimeError:
+                return {'state': {'text': "Printer Offline"}}
         else:
             return {'state': {'text': self.state}}
 
@@ -143,17 +136,30 @@ class Supervisor:
             printer = self.printers[printer_id]
             if printer.state == "Operational":
                 try:
-                    # Check whether there was a print that's done - if so, mark as complete and remove from printer
+                    # Check whether there was a print - if so, mark as complete or failed and remove from printer
                     folder = printer.client.files(config['printers']['working_folder'], True)
                     finished_print_id = folder['children'][0]['name'].split('.')[0]
-                    self.queue.update_status(finished_print_id, "Complete")
-                    printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
+                    if folder['children'][0]['prints']['success']:
+                        self.queue.update_status(finished_print_id, "Complete")
+                        printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
+                    else:
+                        self.queue.update_status(finished_print_id, "Failed")
+                        # Send gcode containing only pause to printer, allowing print to be removed before continuing
+                        with open("0.gcode", "w") as pause_gcode:
+                            pause_gcode.write(f"\nM117 ID {finished_print_id} failed\nM0\nM117 Idle\n")
+                        printer.client.upload("0.gcode")
+                        printer.client.select("0.gcode", print=True)
+                        printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
+                        continue
                 except IndexError:
                     pass
                 # Get ID of next print for current printer type
                 next_print_id = self.queue.get_next_print(printer.type)
                 if next_print_id != 0:
                     next_print = self.queue.download_file(next_print_id, str(next_print_id) + ".gcode")
+                    # Inject pause at end of print
+                    with open(next_print, 'a') as print_gcode:
+                        print_gcode.write("\nM0; Pause to allow user to confirm completion or failure\n")
                     # Upload next print and move to the operating folder
                     printer.client.upload(next_print)
                     printer.client.move(f"{str(next_print_id)}.gcode",
@@ -163,20 +169,21 @@ class Supervisor:
                                           print=True)
                     # Mark as running
                     self.queue.mark_running(next_print_id)
-                    # TODO: Print probably not actually running at this point
-                    #     Need to think about where to pause and how to detect failed prints
+                    # TODO: Delete local file
 
 
 if __name__ == "__main__":
+    import datetime
     import time
 
     supervisor = Supervisor()
     print(supervisor.printers)
     while True:
-        # Check printers and start new prints every 30 seconds (excluding time spent starting new prints)
+        # Check printers and start new prints every set time interval (excluding time spent starting new prints etc.)
         supervisor.update_printer_states()
         for printer in supervisor.printers:
-            print(f"Printer: '{supervisor.printers[printer].name}'  "
+            print(f"{datetime.datetime.now()}  "
+                  f"Printer: '{supervisor.printers[printer].name}'  "
                   f"Type: '{supervisor.printers[printer].type}'  "
                   f"State: '{supervisor.printers[printer].state}'")
         supervisor.check_printer_states()

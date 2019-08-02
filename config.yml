@@ -6,7 +6,5 @@ queue:
     database: "iforge print queue"
 printers:
   working_folder: "iForge_Auto"
-  safe_bed_temperature: 40
-  safe_hotend_temperature: 40
 supervisor:
   update_interval: 30
