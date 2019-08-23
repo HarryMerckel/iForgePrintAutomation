@@ -123,7 +123,7 @@ function addPrinter(ip, apikey){
 
   $$("#panel"+printerNum).append('<div class="panel-body" id="body'+printerNum+'"></div>');
 
-  $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" /></p>');
+  $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" onerror="this.onerror=null;this.src=\'images/static.gif\';" /></p>');
   $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">status</p>');
   $$("#body"+printerNum).append('<p id="e0Temp'+printerNum+'">0</p>');
   $$("#body"+printerNum).append('<p id="bedTemp'+printerNum+'">0</p>');
@@ -149,7 +149,7 @@ function makeBlank(index){
   // make panel border color red
   document.getElementById("panel"+index).className = "panel panel-danger";
   // make the status fields blank
-  document.getElementById("printerStream"+index).src="";
+  // document.getElementById("printerStream"+index).src="";
   document.getElementById("printerStatus"+index).innerHTML="";
   document.getElementById("e0Temp"+index).innerHTML="";
   document.getElementById("bedTemp"+index).innerHTML="";
