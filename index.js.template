@@ -1,0 +1,183 @@
+var refreshRate = 60000; // 1 minute in milliseconds
+var numPrinters = 0;
+var printers = new Object();
+var connected = true;
+var ips = ${ips};
+var apikeys = ${apikeys};
+
+window.onload = function(){
+
+  printers = {"ip":[], "apikey":[]};
+
+  // Load printers
+  for(var i=0;i<ips.length;i++){
+      addPrinter(ips[i], apikeys[i]);
+  }
+  // update printer info
+  setInterval(function () {updatePrinters();}, refreshRate);
+  updatePrinters();
+};
+
+function initialInfo(ip, apikey, index){
+  // add apikey header to GET request
+  $$.ajaxSetup({headers:{"X-Api-Key" : apikey}});
+  // get name of the printer
+  $$.getJSON("http://"+ip+"/api/printerprofiles", function(json){document.getElementById("printerName"+index).innerHTML=json.profiles._default.name;});
+  document.getElementById("printerStream"+index).src="http://"+ip+"/webcam/?action=stream";
+  // set the panel footer as the printer's ip
+  document.getElementById("printerIP"+index).innerHTML = "";
+
+}
+
+function updateStatus(ip, apikey, index){
+  // console.log("Updating printer " + index)
+
+  // add apikey header to GET request
+  $$.ajaxSetup({headers:{"X-Api-Key" : apikey}});
+
+  // check for connection to printer
+  $$.getJSON("http://"+ip+"/api/version", function(json){
+    if(json.api === null){
+      makeBlank(index);
+    }else {
+      document.getElementById("panel"+index).className = "panel panel-primary";
+      initialInfo(ip, apikey, index);
+    }
+  })
+  .error(function() {
+    //document.getElementById("panel"+index).className = "panel panel-danger";
+    makeBlank(index);
+  });
+
+  // get info on current print job
+  $$.getJSON("http://"+ip+"/api/job", function(json){
+      // get printer state
+      document.getElementById("printerStatus"+index).innerHTML="State: "+json.state;
+      //get filename of print
+      if(json.job.file.name === null){
+          // set current file to no file selected
+          document.getElementById("currentFile"+index).innerHTML="No file selected";
+          // set time left field to no active print
+          document.getElementById("timeLeft"+index).innerHTML="No active print";
+          // set print progress bar perecent to 0
+          $$("div#progressBar"+index ).css("width", "0%");
+      }else {
+          // set filename of current print
+          document.getElementById("currentFile"+index).innerHTML="File: "+json.job.file.name.split(".").slice(0, -1).join(".");
+          // set estimation of print time left
+          document.getElementById("timeLeft"+index).innerHTML="Time left: "+(json.progress.printTimeLeft/60).toFixed(2) + " minutes";
+          // set percentage of print completion
+          $$("div#progressBar"+index).css("width", json.progress.completion + "%");
+      }
+  })
+  .error(function() {
+    document.getElementById("panel"+index).className = "panel panel-danger";
+    makeBlank(index);
+  });
+
+
+  // get info on temps
+  $$.getJSON("http://"+ip+"/api/printer", function(json){
+      // get temp of extruder 0 and its target temp
+      document.getElementById("e0Temp"+index).innerHTML="Extruder: "+json.temperature.tool0.actual+"°/"+json.temperature.tool0.target+"°";
+      // get temp of the bed and its target temp
+      if(typeof json.temperature.bed !== "undefined" && json.temperature.bed.actual !== null){
+        document.getElementById("bedTemp"+index).innerHTML="Bed: "+json.temperature.bed.actual+"°/"+json.temperature.bed.target+"°";
+      }else {
+        document.getElementById("bedTemp"+index).innerHTML="0°";
+      }
+  })
+  .error(function() {
+    document.getElementById("panel"+index).className = "panel panel-danger";
+    makeBlank(index);
+  });
+
+}
+
+function updatePrinters(){
+  for(var i=0;i<numPrinters;i++){
+      updateStatus(printers.ip[i],printers.apikey[i], i);
+  }
+}
+
+function addPrinter(ip, apikey){
+  var printerNum = numPrinters;
+  var cancelButton = '<li><button type="button" class="btn btn-default btn-sm pull-right btn-block" data-toggle="modal" onclick="cancelPrinter('+printerNum+')">Cancel Print <span class="glyphicon glyphicon-trash" aria-hidden="true"></span></button></li>';
+  var pauseButton = '<li><button type="button" class="btn btn-default btn-sm pull-right btn-block" data-toggle="modal" onclick="pausePrinter('+printerNum+')">Pause Print <span class="glyphicon glyphicon-pause" aria-hidden="true"></span></button></li>';
+  var resumeButton = '<li><button type="button" class="btn btn-default btn-sm pull-right btn-block" data-toggle="modal" onclick="resumePrinter('+printerNum+')">Resume Print <span class="glyphicon glyphicon-play" aria-hidden="true"></span></button></li>';
+  var octoPrintPageButton = '<li><a type="button" class="btn btn-default btn-sm pull-right btn-block" data-toggle="modal" href="http://'+ip+'/" target="_blank">OctoPrint <span class="glyphicon glyphicon-home" aria-hidden="true"></span></a></li>';
+
+  // add HTML
+  $$("#printerGrid").append('<div class="col-xs-6 col-md-4" id="printer'+printerNum+'"></div>');
+  $$("#printer"+printerNum).append('<div class="panel panel-primary" id="panel'+printerNum+'"></div>');
+
+  $$("#panel"+printerNum).append('<div class="panel-heading clearfix" id="panelHeading'+printerNum+'"></div>');
+  $$("#panelHeading"+printerNum).append('<h4 class="panel-title pull-left" style="padding-top: 7.5px;" id="printerName'+printerNum+'">Printer Name</h4></h4>');
+  $$("#panelHeading"+printerNum).append('<div class="btn-group pull-right" id="btnGroup'+printerNum+'"></div>');
+  $$("#btnGroup"+printerNum).append('<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true" id="menuBtn'+printerNum+'"></span></button>');
+  $$("#btnGroup"+printerNum).append('<ul class="dropdown-menu" role="menu" id="dropdown'+printerNum+'"></ul>');
+  $$("#dropdown"+printerNum).append(cancelButton);
+  $$("#dropdown"+printerNum).append(pauseButton);
+  $$("#dropdown"+printerNum).append(resumeButton);
+  $$("#dropdown"+printerNum).append(octoPrintPageButton);
+
+  $$("#panel"+printerNum).append('<div class="panel-body" id="body'+printerNum+'"></div>');
+
+  $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" /></p>');
+  $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">status</p>');
+  $$("#body"+printerNum).append('<p id="e0Temp'+printerNum+'">0</p>');
+  $$("#body"+printerNum).append('<p id="bedTemp'+printerNum+'">0</p>');
+  $$("#body"+printerNum).append('<p id="currentFile'+printerNum+'">No active print</p>');
+  $$("#body"+printerNum).append('<p id="timeLeft'+printerNum+'">Print Time Left</p>');
+
+  $$("#body"+printerNum).append('<div class="progress" id="progress'+printerNum+'"></div>');
+  $$("#progress"+printerNum).append('<div class="progress-bar progress-bar-info progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"  id="progressBar'+printerNum+'"></div>');
+
+  $$("#panel"+printerNum).append('<div class="panel-footer" id="printerIP'+printerNum+'">ip</div>');
+
+  // store ip and apikey info
+  printers.ip[printerNum]=ip;
+  printers.apikey[printerNum]=apikey;
+
+  // get initial info on printer
+  initialInfo(ip, apikey, printerNum);
+
+  numPrinters++;
+}
+
+function makeBlank(index){
+  // make panel border color red
+  document.getElementById("panel"+index).className = "panel panel-danger";
+  // make the status fields blank
+  document.getElementById("printerStream"+index).src="";
+  document.getElementById("printerStatus"+index).innerHTML="";
+  document.getElementById("e0Temp"+index).innerHTML="";
+  document.getElementById("bedTemp"+index).innerHTML="";
+  document.getElementById("currentFile"+index).innerHTML="";
+  document.getElementById("timeLeft"+index).innerHTML="";
+  // set progress bar to 100%
+  $$("div#progressBar"+index).css("width", "100%");
+  // set panel footer to printer ip with not connected messgae
+  document.getElementById("printerIP"+index).innerHTML = "(not connected)";
+}
+
+function pausePrinter(index){
+  // Pause print
+  $$.ajaxSetup({headers:{"X-Api-Key" : printers.apikey[index], "Content-Type" : "application/json"}});
+  $$.post("http://"+printers.ip[index]+"/api/job", JSON.stringify({"command": "pause","action": "pause"}));
+  setTimeout(function () {updateStatus(printers.ip[index], printers.apikey[index], index);}, 5000);
+}
+
+function resumePrinter(index){
+  // Resume print
+  $$.ajaxSetup({headers:{"X-Api-Key" : printers.apikey[index], "Content-Type" : "application/json"}});
+  $$.post("http://"+printers.ip[index]+"/api/job", JSON.stringify({"command": "pause","action": "resume"}));
+  setTimeout(function () {updateStatus(printers.ip[index], printers.apikey[index], index);}, 5000);
+}
+
+function cancelPrinter(index){
+  // Resume print
+  $$.ajaxSetup({headers:{"X-Api-Key" : printers.apikey[index], "Content-Type" : "application/json"}});
+  $$.post("http://"+printers.ip[index]+"/api/job", JSON.stringify({"command": "cancel"}));
+  setTimeout(function () {updateStatus(printers.ip[index], printers.apikey[index], index);}, 5000);
+}
