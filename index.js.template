@@ -44,7 +44,7 @@ function updateStatus(ip, apikey, index){
       initialInfo(ip, apikey, index);
     }
   })
-  .error(function() {
+  .fail(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
     setTimeout(function () {makeBlank(index);}, 1000);
   });
@@ -70,7 +70,7 @@ function updateStatus(ip, apikey, index){
           $$("div#progressBar"+index).css("width", json.progress.completion + "%");
       }
   })
-  .error(function() {
+  .fail(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
     setTimeout(function () {makeBlank(index);}, 1000);
   });
@@ -78,16 +78,10 @@ function updateStatus(ip, apikey, index){
 
   // get info on temps
   $$.getJSON("http://"+ip+"/api/printer", function(json){
-      // get temp of extruder 0 and its target temp
-      document.getElementById("e0Temp"+index).innerHTML="Extruder: "+json.temperature.tool0.actual+"°/"+json.temperature.tool0.target+"°";
-      // get temp of the bed and its target temp
-      if(typeof json.temperature.bed !== "undefined" && json.temperature.bed.actual !== null){
-        document.getElementById("bedTemp"+index).innerHTML="Bed: "+json.temperature.bed.actual+"°/"+json.temperature.bed.target+"°";
-      }else {
-        document.getElementById("bedTemp"+index).innerHTML="0°";
-      }
+      // get temps and target temps
+      document.getElementById("temps"+index).innerHTML="Extruder: "+json.temperature.tool0.actual+"°/"+json.temperature.tool0.target+"°\tBed: "+json.temperature.bed.actual+"°/"+json.temperature.bed.target+"°";
   })
-  .error(function() {
+  .fail(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
     setTimeout(function () {makeBlank(index);}, 1000);
   });
@@ -108,7 +102,7 @@ function addPrinter(ip, apikey){
   var octoPrintPageButton = '<li><a type="button" class="btn btn-default btn-sm pull-right btn-block" data-toggle="modal" href="http://'+ip+'/" target="_blank">OctoPrint <span class="glyphicon glyphicon-home" aria-hidden="true"></span></a></li>';
 
   // add HTML
-  $$("#printerGrid").append('<div class="col-xs-6 col-md-4" id="printer'+printerNum+'"></div>');
+  $$("#printerGrid").append('<div class="col-xs-12 col-sm-6 col-md-4 col-lg-2" id="printer'+printerNum+'"></div>');
   $$("#printer"+printerNum).append('<div class="panel panel-primary" id="panel'+printerNum+'"></div>');
 
   $$("#panel"+printerNum).append('<div class="panel-heading clearfix" id="panelHeading'+printerNum+'"></div>');
@@ -125,8 +119,7 @@ function addPrinter(ip, apikey){
 
   $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" onerror="this.src=\'images/static.gif\';" /></p>');
   $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">State: Loading</p>');
-  $$("#body"+printerNum).append('<p id="e0Temp'+printerNum+'">Extruder: Loading</p>');
-  $$("#body"+printerNum).append('<p id="bedTemp'+printerNum+'">Bed: Loading</p>');
+  $$("#body"+printerNum).append('<p id="temps'+printerNum+'">Extruder: Loading\tBed: Loading</p>');
   $$("#body"+printerNum).append('<p id="currentFile'+printerNum+'">No active print</p>');
   $$("#body"+printerNum).append('<p id="timeLeft'+printerNum+'">Print Time Left</p>');
 
@@ -151,8 +144,7 @@ function makeBlank(index){
   // make the status fields blank
   document.getElementById("printerStream"+index).src=" ";
   document.getElementById("printerStatus"+index).innerHTML="State: Offline";
-  document.getElementById("e0Temp"+index).innerHTML="Extruder: Offline";
-  document.getElementById("bedTemp"+index).innerHTML="Bed: Offline";
+  document.getElementById("temps"+index).innerHTML="Extruder: Offline\tBed: Offline";
   document.getElementById("currentFile"+index).innerHTML="No file selected";
   document.getElementById("timeLeft"+index).innerHTML="No active print";
   // set progress bar to 0%
