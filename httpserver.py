@@ -4,10 +4,18 @@ import threading
 from http.server import SimpleHTTPRequestHandler
 from string import Template
 
+import yaml
+
+import QueueInterface
+
 global key
+
+with open('config.yml') as yaml_config:
+    config = yaml.safe_load(yaml_config)
 
 
 def exec_interval(func, secs):
+    """ Execute function repeatedly at given interval. Note: Not accurate! """
     def wrapper():
         exec_interval(func, secs)
         func()
@@ -16,10 +24,20 @@ def exec_interval(func, secs):
 
 
 def update_instances():
-    ips = ["192.168.1.237:80"]
-    apikeys = ["5CA2250EE4244EC98833D363A79C970F"]
+    ips = []
+    apikeys = []
+
+    # Get printer details from database
+    queue = QueueInterface.QueueInterface()
+    printer_details = queue.get_all_printer_details()
+    for printer in printer_details:
+        if printer[4] is not None:
+            ips.append(printer[3]+":80")
+            apikeys.append(printer[4])
+
     subs = {'ips': ips, 'apikeys': apikeys}
 
+    # Substitute placeholders for values and write hosted file
     with open("index.js.template", 'r') as template:
         source = Template(template.read())
     result = source.substitute(subs)
@@ -28,19 +46,16 @@ def update_instances():
 
 
 class AuthHandler(SimpleHTTPRequestHandler):
-    """ Main class to present webpages and authentication. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory="web", **kwargs)
 
     def do_HEAD(self):
-        print("send header")
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
     def do_AUTHHEAD(self):
-        print("send header")
         self.send_response(401)
         self.send_header('WWW-Authenticate', 'Basic realm=\"Test\"')
         self.send_header('Content-type', 'text/html')
@@ -48,7 +63,6 @@ class AuthHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         global key
-        ''' Present frontpage with user authentication. '''
         if self.headers.get('Authorization') is None:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode())
@@ -64,6 +78,7 @@ class AuthHandler(SimpleHTTPRequestHandler):
 
 
 def run(port=8000):
+    # Host web server
     server_address = ('', port)
     httpd = http.server.HTTPServer(server_address, AuthHandler)
     sa = httpd.socket.getsockname()
@@ -72,9 +87,12 @@ def run(port=8000):
 
 
 if __name__ == '__main__':
+    # Initial js file creation
     update_instances()
-    exec_interval(update_instances, 3600)
-    username = "iforge"
-    password = "testingpassword"
+    # 1 hour between major js file updates - still requires user to refresh page on client side
+    exec_interval(update_instances, config["web"]["update_interval"])
+    # Set up authentication and start server
+    username = config["web"]["username"]
+    password = config["web"]["password"]
     key = base64.b64encode(f"{username}:{password}".encode())
-    run()
+    run(config["web"]["port"])

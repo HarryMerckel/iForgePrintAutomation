@@ -8,3 +8,8 @@ printers:
   working_folder: "iForge_Auto"
 supervisor:
   update_interval: 30
+web:
+  port: 8000
+  update_interval: 3600
+  username: "iforge"
+  password: "testingpassword"
