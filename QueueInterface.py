@@ -1,4 +1,8 @@
 import io
+import logging
+
+logging.basicConfig(filename='QueueInterface.log', level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
 import mysql.connector as mariadb
 import yaml
@@ -9,6 +13,7 @@ from requests.exceptions import ConnectionError
 
 with open('config.yml') as yaml_config:
     config = yaml.safe_load(yaml_config)
+    logging.debug(config)
 
 
 class QueueInterface:
@@ -50,6 +55,7 @@ class QueueInterface:
         for printer_type in cursor:
             printer_types.add(printer_type[0])
         cursor.close()
+        logging.debug(f"Printer types: {printer_types}")
         return printer_types
 
     def get_details(self, print_id):
@@ -75,6 +81,7 @@ class QueueInterface:
         cursor.execute(query)
         result = cursor.fetchone()
         cursor.close()
+        logging.debug(result)
         return result
 
     def get_status(self, print_id):
@@ -88,6 +95,7 @@ class QueueInterface:
         cursor.execute(query)
         result = cursor.fetchone()
         cursor.close()
+        logging.debug(result)
         if result is not None:
             return result[0]
         else:
@@ -95,6 +103,7 @@ class QueueInterface:
 
     def update_status(self, print_id, new_status):
         self.database.commit()
+        logging.debug(f"Updating ID {print_id} status to {new_status}")
         cursor = self.database.cursor()
         query = (
             "UPDATE `prints` "
@@ -121,6 +130,7 @@ class QueueInterface:
         )
         cursor.execute(query)
         result = cursor.fetchone()
+        logging.debug(result)
         if result is not None:
             print_id = result[0]
             cursor.close()
@@ -140,6 +150,7 @@ class QueueInterface:
         )
         cursor.execute(query)
         result = cursor.fetchone()
+        logging.debug(result)
         if result is not None:
             file_id = result[0]
             if filename_override is not None:
@@ -155,6 +166,7 @@ class QueueInterface:
         done = False
         while done is False:
             status, done = downloader.next_chunk()
+            logging.debug(f"Downloading {filename}, status {status}")
         return filename
 
     def get_all_printer_details(self):
@@ -166,6 +178,7 @@ class QueueInterface:
         )
         cursor.execute(query)
         result = cursor.fetchall()
+        logging.debug(result)
         return result
 
 

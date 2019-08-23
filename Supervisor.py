@@ -1,4 +1,10 @@
+import logging
+import os
+
 import yaml
+
+logging.basicConfig(filename='Supervisor.log', level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
 import QueueInterface
 import octorest
@@ -6,6 +12,7 @@ from requests.exceptions import ConnectionError
 
 with open('config.yml') as yaml_config:
     config = yaml.safe_load(yaml_config)
+    logging.debug(config)
 
 
 class Printer:
@@ -45,11 +52,13 @@ class Printer:
         try:
             self.client = octorest.OctoRest(url="http://" + self.url, apikey=self.apikey)
             return True
-        except ConnectionError:
-            self.state = "Offline"
+        except ConnectionError as e:
+            self.state = "Octoprint Offline"
+            logging.warning(f"Server {self.url} offline: {e}")
             return False
         except TypeError:
             self.state = "Invalid"
+            logging.warning(f"Server {self.url} invalidly defined")
             return False
 
     def update_state(self, force=False):
@@ -71,6 +80,7 @@ class Printer:
             if not force or (force and not self.start_client()):
                 return False
         printer_status = self.get_full_status()
+        logging.debug(printer_status)
         self.state = printer_status['state']['text']  # Octoprint internal state string
         return True
 
@@ -92,6 +102,8 @@ class Printer:
                 return {'state': {'text': "Octoprint Offline"}}  # Emulate the format of the octoprint output
             except RuntimeError:
                 return {'state': {'text': "Printer Offline"}}
+            except AttributeError:
+                return {'state': {'text': "Invalid"}}
         else:
             return {'state': {'text': self.state}}
 
@@ -138,6 +150,7 @@ class Supervisor:
                 try:
                     # Check whether there was a print - if so, mark as complete or failed and remove from printer
                     folder = printer.client.files(config['printers']['working_folder'], True)
+                    logging.debug(folder)
                     finished_print_id = folder['children'][0]['name'].split('.')[0]
                     if folder['children'][0]['prints']['success']:
                         self.queue.update_status(finished_print_id, "Complete")
@@ -169,22 +182,20 @@ class Supervisor:
                                           print=True)
                     # Mark as running
                     self.queue.mark_running(next_print_id)
-                    # TODO: Delete local file
+                    os.remove(f"{str(next_print_id)}.gcode")
 
 
 if __name__ == "__main__":
-    import datetime
     import time
 
     supervisor = Supervisor()
-    print(supervisor.printers)
+    logging.debug(supervisor.printers)
     while True:
         # Check printers and start new prints every set time interval (excluding time spent starting new prints etc.)
         supervisor.update_printer_states()
         for printer in supervisor.printers:
-            print(f"{datetime.datetime.now()}  "
-                  f"Printer: '{supervisor.printers[printer].name}'  "
-                  f"Type: '{supervisor.printers[printer].type}'  "
-                  f"State: '{supervisor.printers[printer].state}'")
+            logging.info(f"Printer: '{supervisor.printers[printer].name}'  "
+                         f"Type: '{supervisor.printers[printer].type}'  "
+                         f"State: '{supervisor.printers[printer].state}'")
         supervisor.check_printer_states()
         time.sleep(config['supervisor']['update_interval'])
