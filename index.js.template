@@ -38,15 +38,15 @@ function updateStatus(ip, apikey, index){
   // check for connection to printer
   $$.getJSON("http://"+ip+"/api/version", function(json){
     if(json.api === null){
-      makeBlank(index);
+      setTimeout(function () {makeBlank(index);}, 1000);
     }else {
       document.getElementById("panel"+index).className = "panel panel-primary";
       initialInfo(ip, apikey, index);
     }
   })
   .error(function() {
-    //document.getElementById("panel"+index).className = "panel panel-danger";
-    makeBlank(index);
+    document.getElementById("panel"+index).className = "panel panel-danger";
+    setTimeout(function () {makeBlank(index);}, 1000);
   });
 
   // get info on current print job
@@ -72,7 +72,7 @@ function updateStatus(ip, apikey, index){
   })
   .error(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
-    makeBlank(index);
+    setTimeout(function () {makeBlank(index);}, 1000);
   });
 
 
@@ -89,7 +89,7 @@ function updateStatus(ip, apikey, index){
   })
   .error(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
-    makeBlank(index);
+    setTimeout(function () {makeBlank(index);}, 1000);
   });
 
 }
@@ -123,10 +123,10 @@ function addPrinter(ip, apikey){
 
   $$("#panel"+printerNum).append('<div class="panel-body" id="body'+printerNum+'"></div>');
 
-  $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" onerror="this.onerror=null;this.src=\'images/static.gif\';" /></p>');
-  $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">status</p>');
-  $$("#body"+printerNum).append('<p id="e0Temp'+printerNum+'">0</p>');
-  $$("#body"+printerNum).append('<p id="bedTemp'+printerNum+'">0</p>');
+  $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" onerror="this.src=\'images/static.gif\';" /></p>');
+  $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">State: Loading</p>');
+  $$("#body"+printerNum).append('<p id="e0Temp'+printerNum+'">Extruder: Loading</p>');
+  $$("#body"+printerNum).append('<p id="bedTemp'+printerNum+'">Bed: Loading</p>');
   $$("#body"+printerNum).append('<p id="currentFile'+printerNum+'">No active print</p>');
   $$("#body"+printerNum).append('<p id="timeLeft'+printerNum+'">Print Time Left</p>');
 
@@ -149,16 +149,14 @@ function makeBlank(index){
   // make panel border color red
   document.getElementById("panel"+index).className = "panel panel-danger";
   // make the status fields blank
-  // document.getElementById("printerStream"+index).src="";
-  document.getElementById("printerStatus"+index).innerHTML="";
-  document.getElementById("e0Temp"+index).innerHTML="";
-  document.getElementById("bedTemp"+index).innerHTML="";
-  document.getElementById("currentFile"+index).innerHTML="";
-  document.getElementById("timeLeft"+index).innerHTML="";
-  // set progress bar to 100%
-  $$("div#progressBar"+index).css("width", "100%");
-  // set panel footer to printer ip with not connected messgae
-  document.getElementById("printerIP"+index).innerHTML = "(not connected)";
+  document.getElementById("printerStream"+index).src=" ";
+  document.getElementById("printerStatus"+index).innerHTML="State: Offline";
+  document.getElementById("e0Temp"+index).innerHTML="Extruder: Offline";
+  document.getElementById("bedTemp"+index).innerHTML="Bed: Offline";
+  document.getElementById("currentFile"+index).innerHTML="No file selected";
+  document.getElementById("timeLeft"+index).innerHTML="No active print";
+  // set progress bar to 0%
+  $$("div#progressBar"+index).css("width", "0%");
 }
 
 function pausePrinter(index){
