@@ -79,7 +79,7 @@ function updateStatus(ip, apikey, index){
   // get info on temps
   $$.getJSON("http://"+ip+"/api/printer", function(json){
       // get temps and target temps
-      document.getElementById("temps"+index).innerHTML="Extruder: "+json.temperature.tool0.actual+"°/"+json.temperature.tool0.target+"°\tBed: "+json.temperature.bed.actual+"°/"+json.temperature.bed.target+"°";
+      document.getElementById("temps"+index).innerHTML="Extruder: "+json.temperature.tool0.actual+"°/"+json.temperature.tool0.target+"°\t\tBed: "+json.temperature.bed.actual+"°/"+json.temperature.bed.target+"°";
   })
   .fail(function() {
     document.getElementById("panel"+index).className = "panel panel-danger";
@@ -119,7 +119,7 @@ function addPrinter(ip, apikey){
 
   $$("#body"+printerNum).append('<p><img id="printerStream'+printerNum+'" src="" alt="Stream unavailable" onerror="this.src=\'images/static.gif\';" /></p>');
   $$("#body"+printerNum).append('<p id="printerStatus'+printerNum+'">State: Loading</p>');
-  $$("#body"+printerNum).append('<p id="temps'+printerNum+'">Extruder: Loading\tBed: Loading</p>');
+  $$("#body"+printerNum).append('<p id="temps'+printerNum+'">Extruder: Loading\t\tBed: Loading</p>');
   $$("#body"+printerNum).append('<p id="currentFile'+printerNum+'">No active print</p>');
   $$("#body"+printerNum).append('<p id="timeLeft'+printerNum+'">Print Time Left</p>');
 
@@ -144,7 +144,7 @@ function makeBlank(index){
   // make the status fields blank
   document.getElementById("printerStream"+index).src=" ";
   document.getElementById("printerStatus"+index).innerHTML="State: Offline";
-  document.getElementById("temps"+index).innerHTML="Extruder: Offline\tBed: Offline";
+  document.getElementById("temps"+index).innerHTML="Extruder: Offline\t\tBed: Offline";
   document.getElementById("currentFile"+index).innerHTML="No file selected";
   document.getElementById("timeLeft"+index).innerHTML="No active print";
   // set progress bar to 0%
