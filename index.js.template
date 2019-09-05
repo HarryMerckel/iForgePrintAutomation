@@ -24,9 +24,6 @@ function initialInfo(ip, apikey, index){
   // get name of the printer
   $$.getJSON("http://"+ip+"/api/printerprofiles", function(json){document.getElementById("printerName"+index).innerHTML=json.profiles._default.name;});
   document.getElementById("printerStream"+index).src="http://"+ip+"/webcam/?action=stream";
-  // set the panel footer as the printer's ip
-  document.getElementById("printerIP"+index).innerHTML = "";
-
 }
 
 function updateStatus(ip, apikey, index){
@@ -65,9 +62,12 @@ function updateStatus(ip, apikey, index){
           // set filename of current print
           document.getElementById("currentFile"+index).innerHTML="File: "+json.job.file.name.split(".").slice(0, -1).join(".");
           // set estimation of print time left
-          document.getElementById("timeLeft"+index).innerHTML="Time left: "+(json.progress.printTimeLeft/60).toFixed(2) + " minutes";
+          var seconds = new Date(null);
+          seconds.setSeconds(json.progress.printTimeLeft);
+          document.getElementById("timeLeft"+index).innerHTML="Approx. Time Left: "+seconds.toISOString().substr(11, 8);;
           // set percentage of print completion
           $$("div#progressBar"+index).css("width", json.progress.completion + "%");
+          document.getElementById("progressBar"+index).innerHTML=json.progress.completion.toPrecision(3)+"%"
       }
   })
   .fail(function() {
@@ -125,8 +125,6 @@ function addPrinter(ip, apikey){
 
   $$("#body"+printerNum).append('<div class="progress" id="progress'+printerNum+'"></div>');
   $$("#progress"+printerNum).append('<div class="progress-bar progress-bar-info progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"  id="progressBar'+printerNum+'"></div>');
-
-  $$("#panel"+printerNum).append('<div class="panel-footer" id="printerIP'+printerNum+'">ip</div>');
 
   // store ip and apikey info
   printers.ip[printerNum]=ip;

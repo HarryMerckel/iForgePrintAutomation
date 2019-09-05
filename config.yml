@@ -13,3 +13,7 @@ web:
   update_interval: 3600
   username: "iforge"
   password: "testingpassword"
+email:
+  address: "iforge@sheffield.ac.uk"
+  name: "iForge"
+  signature: "The iForge 3D Printing Team"

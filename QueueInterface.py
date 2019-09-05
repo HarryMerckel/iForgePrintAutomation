@@ -1,11 +1,14 @@
+import base64
 import io
 import logging
+from email.mime.text import MIMEText
 
 logging.basicConfig(filename='QueueInterface.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
 import mysql.connector as mariadb
 import yaml
+import time
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from oauth2client.service_account import ServiceAccountCredentials
@@ -15,15 +18,15 @@ with open('config.yml') as yaml_config:
     config = yaml.safe_load(yaml_config)
     logging.debug(config)
 
-
 class QueueInterface:
     """Interface for the MariaDB print database"""
 
     def __init__(self):
         # Initialise the database and Google Drive connection
-        self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        self.scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/gmail.send']
         self.credentials = ServiceAccountCredentials.from_json_keyfile_name('serviceaccount.json', self.scope)
         self.service = build('drive', 'v3', credentials=self.credentials)
+        self.mail_service = build('gmail', 'v1', credentials=self.credentials)
 
         self.database = mariadb.connect(
             host=config['queue']['server']['host'],
@@ -35,6 +38,47 @@ class QueueInterface:
     def __del__(self):
         # Close the database connection on close
         self.database.close()
+
+    def create_email_message(self, to, subject, text):
+        message = MIMEText(text)
+        message['to'] = to
+        message['from'] = config['email']['address']
+        message['subject'] = subject
+        return {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
+
+    def send_email(self, message):
+        message_id = self.mail_service.users().messages().send(userId="me", body=message).execute()
+        logging.debug(f"Email sent: {message_id}")
+
+    def send_complete_email(self, print_id):
+        details = self.get_details(print_id)
+        subject = f"{config['email']['name']} 3D Print ID#{print_id} Complete"
+        text = f"""
+Your print ID#{print_id} with filename "{details[3]}" has successfully completed.
+
+Please come and collect it from us as soon as possible!
+
+Best regards,
+{config['email']['signature']}
+"""
+        to = details[1]
+        message = self.create_email_message(to, subject, text)
+        self.send_email(message)
+
+    def send_failed_email(self, print_id):
+        details = self.get_details(print_id)
+        subject = f"{config['email']['name']} 3D Print ID#{print_id} Failed"
+        text = f"""
+Your print ID#{print_id} with filename "{details[3]}" has failed.
+
+Please come and talk to us so we can sort things out.
+
+Best regards,
+{config['email']['signature']}
+"""
+        to = details[1]
+        message = self.create_email_message(to, subject, text)
+        self.send_email(message)
 
     def get_valid_printers(self):
         """Retrieve a list of valid printer types
@@ -114,8 +158,50 @@ class QueueInterface:
         self.database.commit()
         cursor.close()
 
-    def mark_running(self, print_id):
-        self.update_status(print_id, "Running")
+    def mark_running(self, print_id, printer_id):
+        self.database.commit()
+
+        logging.debug(f"Updating ID {print_id} start time")
+        cursor = self.database.cursor()
+        query = (
+            "UPDATE `prints` "
+            f"SET `start time` = CURRENT_TIMESTAMP, `assigned printer` = {printer_id}, `print status` = 'Running' "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        self.database.commit()
+
+        cursor.close()
+
+    def mark_failed(self, print_id):
+        self.database.commit()
+
+        logging.debug(f"Updating ID {print_id} finish time")
+        cursor = self.database.cursor()
+        query = (
+            "UPDATE `prints` "
+            f"SET `finish time` = CURRENT_TIMESTAMP, `print status` = 'Failed' "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        self.database.commit()
+
+        cursor.close()
+
+    def mark_complete(self, print_id):
+        self.database.commit()
+
+        logging.debug(f"Updating ID {print_id} finish time")
+        cursor = self.database.cursor()
+        query = (
+            "UPDATE `prints` "
+            f"SET `finish time` = CURRENT_TIMESTAMP, `print status` = 'Complete' "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        self.database.commit()
+
+        cursor.close()
 
     def get_next_print(self, printer_type):
         self.database.commit()
@@ -212,21 +298,25 @@ if __name__ == "__main__":
         print_id = queue.get_next_print(printer_type)
         if print_id == 0:
             print("No print found")
-            exit(0)
-        print(f"{printer_type} print found, downloading...")
-        print_filename = queue.download_file(print_id)  # Download file to local directory
-        try:
-            root.filename = filedialog.asksaveasfilename(title="Save as...", initialfile=print_filename, initialdir="/",
-                                                         filetypes=(("gcode files", "*.gcode"), ("all files", "*.*")))
-            shutil.move(print_filename, root.filename)  # Move file from local directory to user's chosen directory
-            print(f"Downloaded to {root.filename}")
-        except FileNotFoundError:
-            print("Cancelling...")
-            # TODO: Remove downloaded file
+        else:
+            print(f"{printer_type} print found, downloading...")
+            print_filename = queue.download_file(print_id)  # Download file to local directory
+            try:
+                root.filename = filedialog.asksaveasfilename(title="Save as...", initialfile=print_filename, initialdir="/",
+                                                             filetypes=(("gcode files", "*.gcode"), ("all files", "*.*")))
+                shutil.move(print_filename, root.filename)  # Move file from local directory to user's chosen directory
+                print(f"Downloaded to {root.filename}")
+            except FileNotFoundError:
+                print("Cancelling...")
+                # TODO: Remove downloaded file
     except ConnectionError:  # Internet connection failed
         print("Connection error")
         exit(0)
 
     # Print lookup test
-    print(f"Print ID 1: {queue.get_details(1)}")
-    print(f"Print ID 2: {queue.get_details(2)}")
+    print(f"Print ID#1: {queue.get_details(1)}")
+    print(f"Print ID#2: {queue.get_details(2)}")
+
+    # Test emails TODO not working - authentication issues?
+    # queue.send_complete_email(1)
+    # queue.send_failed_email(1)

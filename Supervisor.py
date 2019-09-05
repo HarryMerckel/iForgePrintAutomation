@@ -153,10 +153,10 @@ class Supervisor:
                     logging.debug(folder)
                     finished_print_id = folder['children'][0]['name'].split('.')[0]
                     if folder['children'][0]['prints']['success']:
-                        self.queue.update_status(finished_print_id, "Complete")
+                        self.queue.mark_complete(finished_print_id)
                         printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
                     else:
-                        self.queue.update_status(finished_print_id, "Failed")
+                        self.queue.mark_failed(finished_print_id)
                         # Send gcode containing only pause to printer, allowing print to be removed before continuing
                         with open("0.gcode", "w") as pause_gcode:
                             pause_gcode.write(f"\nM117 ID {finished_print_id} failed\nM0\nM117 Idle\n")
@@ -181,7 +181,7 @@ class Supervisor:
                     printer.client.select(f"{config['printers']['working_folder']}/{str(next_print_id)}.gcode",
                                           print=True)
                     # Mark as running
-                    self.queue.mark_running(next_print_id)
+                    self.queue.mark_running(next_print_id, printer_id)
                     os.remove(f"{str(next_print_id)}.gcode")
 
 
