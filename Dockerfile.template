@@ -7,6 +7,8 @@ RUN install_packages mariadb-server cron
 # Move to app dir
 WORKDIR /usr/src/app
 
+RUN ls -l
+
 RUN bash ./app/mariadb_setup.sh rootpassword systempassword
 
 # Move app to filesystem
