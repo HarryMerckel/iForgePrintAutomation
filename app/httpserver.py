@@ -6,7 +6,7 @@ from string import Template
 
 import yaml
 
-import QueueInterface
+from app import QueueInterface
 
 global key
 

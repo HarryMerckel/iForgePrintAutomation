@@ -6,7 +6,7 @@ import yaml
 logging.basicConfig(filename='Supervisor.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
-import QueueInterface
+from app import QueueInterface
 import octorest
 from requests.exceptions import ConnectionError
 
@@ -159,7 +159,7 @@ class Supervisor:
                         self.queue.mark_failed(finished_print_id)
                         # Send gcode containing only pause to printer, allowing print to be removed before continuing
                         with open("0.gcode", "w") as pause_gcode:
-                            pause_gcode.write(f"\nM117 ID {finished_print_id} failed\nM0\nM117 Idle\n")
+                            pause_gcode.write(f"\nM117 ID#{finished_print_id} failed\nM0\nM117 Idle\n")
                         printer.client.upload("0.gcode")
                         printer.client.select("0.gcode", print=True)
                         printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")

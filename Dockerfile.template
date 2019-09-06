@@ -1,0 +1,26 @@
+FROM balenalib/%%RESIN_MACHINE_NAME%%-python:3-stretch-run
+
+# use `install_packages` if you need to install dependencies,
+# for instance if you need git, just uncomment the line below.
+RUN install_packages mariadb-server cron
+
+# Move to app dir
+WORKDIR /usr/src/app
+
+RUN ./mariadb_setup.sh rootpassword systempassword
+
+# Move app to filesystem
+COPY ./app ./
+
+RUN pip install -r requirements.txt
+
+RUN echo "0 * * * * /usr/src/app/backup.sh rootpassword" | crontab
+
+## uncomment if you want systemd
+ENV INITSYSTEM on
+
+# Enable udevd so that plugged dynamic hardware devices show up in our container.
+ENV UDEV=1
+
+# Start app
+CMD ["bash", "/usr/src/app/start.sh"]
