@@ -7,14 +7,12 @@ RUN install_packages mariadb-server cron
 # Move to app dir
 WORKDIR /usr/src/app
 
-RUN ls -l
-
-RUN bash ./app/mariadb_setup.sh rootpassword systempassword
-
 # Move app to filesystem
 COPY ./app ./
 
 RUN pip install -r requirements.txt
+
+RUN bash ./mariadb_setup.sh rootpassword systempassword
 
 RUN echo "0 * * * * /usr/src/app/backup.sh rootpassword" | crontab
 
