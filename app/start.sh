@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# MariaDB stuff
+/etc/init.d/mysql start
 
 python3 httpserver.py &
 python3 Supervisor.py

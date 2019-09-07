@@ -6,6 +6,8 @@
 # A non-interactive replacement for mysql_secure_installation
 # With automated setup of print queue database
 
+/etc/init.d/mysql start
+
 set -o errexit # abort on nonzero exitstatus
 set -o nounset # abort on unbound variable
 
