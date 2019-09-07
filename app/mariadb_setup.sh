@@ -124,4 +124,6 @@ CREATE TABLE IF NOT EXISTS \`prints\` (
 
 _EOF_
 
-mysql queue < /data/queue_backup.sql
+if [ -f "/data/queue_backup.sql"]; then
+    mysql queue < /data/queue_backup.sql
+fi
