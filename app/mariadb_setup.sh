@@ -6,6 +6,10 @@
 # A non-interactive replacement for mysql_secure_installation
 # With automated setup of print queue database
 
+echo "[mysqld]" >> /etc/mysql/my.cnf
+echo "skip-networking=0" >> /etc/mysql/my.cnf
+echo "skip-bind-address" >> /etc/mysql/my.cnf
+
 /etc/init.d/mysql start
 
 set -o errexit # abort on nonzero exitstatus
