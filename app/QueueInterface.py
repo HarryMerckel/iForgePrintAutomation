@@ -8,7 +8,6 @@ logging.basicConfig(filename='QueueInterface.log', level=logging.DEBUG,
 
 import mysql.connector as mariadb
 import yaml
-import time
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from oauth2client.service_account import ServiceAccountCredentials
@@ -17,6 +16,7 @@ from requests.exceptions import ConnectionError
 with open('config.yml') as yaml_config:
     config = yaml.safe_load(yaml_config)
     logging.debug(config)
+
 
 class QueueInterface:
     """Interface for the MariaDB print database"""
