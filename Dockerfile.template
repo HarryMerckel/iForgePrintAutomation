@@ -10,7 +10,7 @@ WORKDIR /usr/src/app
 # Move app to filesystem
 COPY ./app ./
 RUN rm config.yml
-RUN cp -a /run/secrets/. /urs/src/app
+RUN cp -a /run/secrets/. /usr/src/app
 
 RUN pip install -r requirements.txt
 
