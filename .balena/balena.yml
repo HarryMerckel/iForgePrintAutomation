@@ -1,0 +1,6 @@
+build-secrets:
+    global:
+        - source: serviceaccount.json
+          dest: serviceaccount.json
+        - source: config.yml
+          dest: config.yml

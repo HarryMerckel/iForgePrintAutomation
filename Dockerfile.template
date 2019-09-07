@@ -9,6 +9,8 @@ WORKDIR /usr/src/app
 
 # Move app to filesystem
 COPY ./app ./
+RUN rm config.yml
+COPY /run/secrets ./
 
 RUN pip install -r requirements.txt
 
