@@ -141,10 +141,10 @@ class Supervisor:
                 else:
                     self.printers[printer[0]].update_state(True)
 
-    def update_printer_states(self):
+    def update_printer_states(self, force=False):
         """Just update the state of all active printers"""
         for printer in self.printers:
-            self.printers[printer].update_state()
+            self.printers[printer].update_state(force)
 
     def check_printer_states(self):
         """Check all active printers, start next print job if last one complete"""
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     logging.debug(supervisor.printers)
     while True:
         # Check printers and start new prints every set time interval (excluding time spent starting new prints etc.)
-        supervisor.update_printer_states()
+        supervisor.update_printer_states(True)
         for printer in supervisor.printers:
             logging.info(f"Printer: '{supervisor.printers[printer].name}'  "
                          f"Type: '{supervisor.printers[printer].type}'  "
