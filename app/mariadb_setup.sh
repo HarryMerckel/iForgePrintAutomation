@@ -9,7 +9,6 @@
 echo "[mysqld]" >> /etc/mysql/my.cnf
 echo "skip-networking=0" >> /etc/mysql/my.cnf
 echo "skip-bind-address" >> /etc/mysql/my.cnf
-echo "datadir=/data" >> /etc/mysql/my.cnf
 
 /etc/init.d/mysql start
 
