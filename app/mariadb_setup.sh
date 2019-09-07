@@ -63,7 +63,7 @@ if is_mysql_root_password_set; then
   exit 0
 fi
 
-mysql --user=root << EOF
+mysql --user=root << _EOF_
   UPDATE mysql.user SET Password=PASSWORD('${db_root_password}') WHERE User='root';
   DELETE FROM mysql.user WHERE User='';
   DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
@@ -77,41 +77,41 @@ mysql --user=root << EOF
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 
-CREATE DATABASE IF NOT EXISTS `queue` /*!40100 DEFAULT CHARACTER SET latin1 */;
+CREATE DATABASE IF NOT EXISTS \`queue\` /*!40100 DEFAULT CHARACTER SET latin1 */;
 USE `queue`;
 
-CREATE TABLE IF NOT EXISTS `printers` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` tinytext DEFAULT NULL,
-  `type` tinytext DEFAULT NULL,
-  `ip address` tinytext DEFAULT NULL,
-  `api key` tinytext DEFAULT NULL,
-  `total time printed` int(10) unsigned DEFAULT 0,
-  `maintenance time` int(10) unsigned DEFAULT 0,
-  `completed prints` int(10) unsigned DEFAULT 0,
-  `failed prints` int(10) unsigned DEFAULT 0,
-  `total filament used` float unsigned DEFAULT 0,
-  PRIMARY KEY (`id`)
+CREATE TABLE IF NOT EXISTS \`printers\` (
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`name\` tinytext DEFAULT NULL,
+  \`type\` tinytext DEFAULT NULL,
+  \`ip address\` tinytext DEFAULT NULL,
+  \`api key\` tinytext DEFAULT NULL,
+  \`total time printed\` int(10) unsigned DEFAULT 0,
+  \`maintenance time\` int(10) unsigned DEFAULT 0,
+  \`completed prints\` int(10) unsigned DEFAULT 0,
+  \`failed prints\` int(10) unsigned DEFAULT 0,
+  \`total filament used\` float unsigned DEFAULT 0,
+  PRIMARY KEY (\`id\`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 
 CREATE TABLE IF NOT EXISTS `prints` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `email address` tinytext DEFAULT NULL,
-  `project type` tinytext DEFAULT NULL,
-  `gcode filename` tinytext DEFAULT NULL,
-  `drive file id` tinytext DEFAULT NULL,
-  `filament estimate` float unsigned DEFAULT NULL,
-  `printer type` text DEFAULT NULL,
-  `rep check` tinytext DEFAULT NULL,
-  `notes` text DEFAULT NULL,
-  `print status` tinytext DEFAULT 'Pending Check',
-  `assigned printer` int(11) DEFAULT NULL,
-  `expected duration` time DEFAULT NULL,
-  `added` datetime DEFAULT current_timestamp(),
-  `last updated` datetime DEFAULT NULL ON UPDATE current_timestamp(),
-  `start time` datetime DEFAULT NULL,
-  `finish time` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  \`id\` int(11) NOT NULL AUTO_INCREMENT,
+  \`email address\` tinytext DEFAULT NULL,
+  \`project type\` tinytext DEFAULT NULL,
+  \`gcode filename\` tinytext DEFAULT NULL,
+  \`drive file id\` tinytext DEFAULT NULL,
+  \`filament estimate\` float unsigned DEFAULT NULL,
+  \`printer type\` text DEFAULT NULL,
+  \`rep check\` tinytext DEFAULT NULL,
+  \`notes\` text DEFAULT NULL,
+  \`print status\` tinytext DEFAULT 'Pending Check',
+  \`assigned printer\` int(11) DEFAULT NULL,
+  \`expected duration\` time DEFAULT NULL,
+  \`added\` datetime DEFAULT current_timestamp(),
+  \`last updated\` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  \`start time\` datetime DEFAULT NULL,
+  \`finish time\` datetime DEFAULT NULL,
+  PRIMARY KEY (\`id\`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=latin1;
 
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS `prints` (
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 
   CREATE USER 'system' IDENTIFIED BY '${db_sys_password}';
-  GRANT ALL privileges ON `queue`.* TO 'system'@'%';
+  GRANT ALL privileges ON \`queue\`.* TO 'system'@'%';
   FLUSH PRIVILEGES;
 
-EOF
+_EOF_
 
 mysql queue < /data/queue_backup.sql
