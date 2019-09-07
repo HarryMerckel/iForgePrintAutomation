@@ -4,3 +4,4 @@
 
 python3 httpserver.py &
 python3 Supervisor.py
+sleep 10m
