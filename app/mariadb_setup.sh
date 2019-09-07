@@ -63,7 +63,7 @@ if is_mysql_root_password_set; then
   exit 0
 fi
 
-mysql --user=root <<_EOF_
+mysql --user=root << EOF
   UPDATE mysql.user SET Password=PASSWORD('${db_root_password}') WHERE User='root';
   DELETE FROM mysql.user WHERE User='';
   DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
@@ -122,6 +122,6 @@ CREATE TABLE IF NOT EXISTS `prints` (
   GRANT ALL privileges ON `queue`.* TO 'system'@'%';
   FLUSH PRIVILEGES;
 
-_EOF_
+EOF
 
 mysql queue < /data/queue_backup.sql
