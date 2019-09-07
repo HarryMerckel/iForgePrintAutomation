@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS `prints` (
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 
   CREATE USER 'system' IDENTIFIED BY '${db_sys_password}';
-  GRANT ALL privileges ON `mydb`.* TO 'myuser'@'%';
+  GRANT ALL privileges ON `queue`.* TO 'system'@'%';
   FLUSH PRIVILEGES;
 
 _EOF_
 
-mysql queue < backup-file.sql
+mysql queue < /data/queue_backup.sql

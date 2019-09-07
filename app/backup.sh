@@ -8,4 +8,4 @@ if [ "$#" -ne "1" ]; then
   exit 2
 fi
 
-mysqldump queue --single-transaction --user=root --password=${1} > /data/all_databases.sql
+mysqldump queue --single-transaction --user=root --password=${1} > /data/queue_backup.sql
