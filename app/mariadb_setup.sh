@@ -78,7 +78,7 @@ mysql --user=root << _EOF_
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 
 CREATE DATABASE IF NOT EXISTS \`queue\` /*!40100 DEFAULT CHARACTER SET latin1 */;
-USE `queue`;
+USE \`queue\`;
 
 CREATE TABLE IF NOT EXISTS \`printers\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS \`printers\` (
   PRIMARY KEY (\`id\`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 
-CREATE TABLE IF NOT EXISTS `prints` (
+CREATE TABLE IF NOT EXISTS \`prints\` (
   \`id\` int(11) NOT NULL AUTO_INCREMENT,
   \`email address\` tinytext DEFAULT NULL,
   \`project type\` tinytext DEFAULT NULL,
