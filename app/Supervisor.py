@@ -6,7 +6,11 @@ import yaml
 logging.basicConfig(filename='Supervisor.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
-import QueueInterface
+try:
+    import QueueInterface
+except ImportError:
+    from app import QueueInterface
+
 import octorest
 from requests.exceptions import ConnectionError
 
