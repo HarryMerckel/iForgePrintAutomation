@@ -56,7 +56,7 @@ class Printer:
         try:
             self.client = octorest.OctoRest(url="http://" + self.url, apikey=self.apikey)
             return True
-        except ConnectionError as e:
+        except (ConnectionError, RuntimeError) as e:
             self.state = "Octoprint Offline"
             logging.warning(f"Server {self.url} offline: {e}")
             return False
