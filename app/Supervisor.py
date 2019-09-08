@@ -157,7 +157,7 @@ class Supervisor:
                     logging.debug(folder)
                     finished_print_id = folder['children'][0]['name'].split('.')[0]
                     if folder['children'][0]['prints']['success']:
-                        self.queue.mark_complete(finished_print_id)
+                        self.queue.mark_complete(finished_print_id, printer_id, int(folder['children'][0]['prints']['last']['printTime']), int(3 * folder['children'][0]['gcodeAnalysis']['filament']['tool0']['length']))
                         printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
                     else:
                         self.queue.mark_failed(finished_print_id)
