@@ -196,12 +196,17 @@ Best regards,
         query = (
             f"UPDATE `prints` "
             f"SET `finish time` = CURRENT_TIMESTAMP, `print status` = 'Complete' "
-            f"WHERE `id` = {print_id}; "
+            f"WHERE `id` = {print_id}"
+        )
+        cursor.execute(query)
+        self.database.commit()
+
+        query = (
             f"UPDATE `printers` "
             f"SET `total time printed` = `total time printed` + {print_time}, "
             f"`completed prints` = `completed prints` + 1, "
             f"`total filament used` = `total filament used` + {filament_used} "
-            f"WHERE `id` = {printer_id}; "
+            f"WHERE `id` = {printer_id}"
         )
         cursor.execute(query)
         self.database.commit()
