@@ -201,8 +201,8 @@ if __name__ == "__main__":
         # Check printers and start new prints every set time interval (excluding time spent starting new prints etc.)
         supervisor.update_printer_states(True)
         for printer in supervisor.printers:
-            logging.info(f"Printer: '{supervisor.printers[printer].name}'  "
-                         f"Type: '{supervisor.printers[printer].type}'  "
-                         f"State: '{supervisor.printers[printer].state}'")
+            print(f"Printer: '{supervisor.printers[printer].name}'  "
+                  f"Type: '{supervisor.printers[printer].type}'  "
+                  f"State: '{supervisor.printers[printer].state}'")
         supervisor.check_printer_states()
         time.sleep(config['supervisor']['update_interval'])
