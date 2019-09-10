@@ -1,7 +1,7 @@
 # Private / security sensitive files
 serviceaccount.json
 index.js
-.balena/secrets/
+.balena/
 
 # Assorted gcode
 *.gcode

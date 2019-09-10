@@ -22,7 +22,8 @@ cat << _EOF_
 
 Usage: ${0} "ROOT PASSWORD" "SYS PASSWORD"
 
-  with "ROOT PASSWORD" the desired password for the database root user and "SYS PASSWORD" is for the system to access data
+  with "ROOT PASSWORD" the desired password for the database root user
+  with "SYS PASSWORD" for the system to access data
 
 Use quotes if your password contains spaces or other special characters.
 _EOF_

@@ -153,7 +153,11 @@ class Supervisor:
             if printer.state == "Operational":
                 try:
                     # Check whether there was a print - if so, mark as complete or failed and remove from printer
-                    folder = printer.client.files(config['printers']['working_folder'], True)
+                    try:
+                        folder = printer.client.files(config['printers']['working_folder'], True)
+                    except RuntimeError:
+                        printer.client.create_folder(config['printers']['working_folder'])
+                        folder = printer.client.files(config['printers']['working_folder'], True)
                     logging.debug(folder)
                     finished_print_id = folder['children'][0]['name'].split('.')[0]
                     if folder['children'][0]['prints']['success']:
@@ -171,6 +175,7 @@ class Supervisor:
                         printer.client.delete(f"local/{config['printers']['working_folder']}/{finished_print_id}.gcode")
                         continue
                 except IndexError:
+                    # No file found in folder
                     pass
                 # Get ID of next print for current printer type
                 next_print_id = self.queue.get_next_print(printer.type)

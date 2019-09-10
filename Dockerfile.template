@@ -1,5 +1,8 @@
 FROM balenalib/%%RESIN_MACHINE_NAME%%-python:3.7.4
 
+ARG DB_ROOT_PASSWORD
+ARG DB_SYSTEM_PASSWORD
+
 # use `install_packages` if you need to install dependencies,
 # for instance if you need git, just uncomment the line below.
 RUN install_packages mariadb-server cron
@@ -14,9 +17,9 @@ RUN cp -a /run/secrets/. /usr/src/app
 
 RUN pip install -r requirements.txt
 
-RUN bash ./mariadb_setup.sh rootpassword systempassword
+RUN bash ./mariadb_setup.sh ${DB_ROOT_PASSWORD} ${DB_SYSTEM_PASSWORD}
 
-RUN echo "0 * * * * /usr/src/app/backup.sh rootpassword" | crontab
+RUN echo "0 * * * * /usr/src/app/backup.sh ${DB_ROOT_PASSWORD}" | crontab
 
 ## uncomment if you want systemd
 ENV INITSYSTEM on
