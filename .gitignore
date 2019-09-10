@@ -1,7 +1,10 @@
 # Private / security sensitive files
 serviceaccount.json
-index.js
-.balena/
+config.yml
+index.js  # Compiled version contains API keys
+.balena/balena.yml
+.balena/secrets/serviceaccount.json
+.balena/secrets/config.yml
 
 # Assorted gcode
 *.gcode
