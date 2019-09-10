@@ -2,7 +2,9 @@
 serviceaccount.json
 config.yml
 index.js  # Compiled version contains API keys
-.balena/
+.balena/balena.yml
+.balena/secrets/serviceaccount.json
+.balena/secrets/config.yml
 
 # Assorted gcode
 *.gcode
