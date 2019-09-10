@@ -7,8 +7,5 @@ build-secrets:
 build-variables:
     global:
         - DB_ROOT_PASSWORD=rootPasswordHere
-        - DB_SYSTEM_USERNAME=system
         - DB_SYSTEM_PASSWORD=systemPasswordHere
-        - WEB_USERNAME=username
-        - WEB_PASSWORD=password
         
