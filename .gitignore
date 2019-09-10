@@ -1,7 +1,8 @@
 # Private / security sensitive files
 serviceaccount.json
 config.yml
-index.js  # Compiled version contains API keys
+# Compiled version contains API keys
+index.js
 .balena/balena.yml
 .balena/secrets/serviceaccount.json
 .balena/secrets/config.yml
